@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S&F Logística — Dashboard Cockpit</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Inter:wght@300;400;500&display=swap');
+
+  :root {
+    --green-dim: #0a3d2e;
+    --green-mid: #1a5c42;
+    --green-bright: #2aaa72;
+    --green-glow: #00b359;
+    --amber: #e8a020;
+    --red-alert: #d63030;
+    --panel: #e3f2fd;
+    --panel2: #fffbf0;
+    --surface: #bbdefb;
+    --border: #90caf9;
+    --text-main: #1a1a1a;
+    --text-dim: #555555;
+    --text-muted: #888888;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--panel);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* — scanlines overlay — REMOVED */
+
+  /* ══ HEADER ══════════════════════════════════════════════ */
+  .hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hdr-logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-badge {
+    width: 42px; height: 42px;
+    background: var(--green-bright);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700; font-size: 18px;
+    color: #fff; letter-spacing: 1px;
+  }
+
+  .hdr h1 {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px; font-weight: 700;
+    color: var(--green-glow);
+    letter-spacing: 2px; text-transform: uppercase;
+  }
+
+  .hdr-sub { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; }
+
+  .hdr-right { display: flex; align-items: center; gap: 20px; }
+
+  .clock {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px; color: var(--green-glow);
+    letter-spacing: 2px;
+  }
+
+  .status-dot {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; color: var(--text-dim); letter-spacing: 1px;
+  }
+
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green-bright);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: .3; }
+  }
+
+  /* ══ GRID MAIN ═══════════════════════════════════════════ */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 14px;
+    padding: 18px 24px;
+  }
+
+  /* ══ PANELS ══════════════════════════════════════════════ */
+  .panel {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: var(--green-bright);
+    opacity: .5;
+  }
+
+  .panel-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px; font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .panel-title svg { width: 14px; height: 14px; opacity: .7; }
+
+  /* ══ GAUGE INSTRUMENT ════════════════════════════════════ */
+  .gauge-wrap {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+  }
+
+  .gauge-canvas-wrap {
+    position: relative;
+    width: 180px; height: 100px;
+    overflow: visible;
+  }
+
+  .gauge-val {
+    position: absolute;
+    bottom: -2px; left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+
+  .gauge-number {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 26px; font-weight: 400;
+    color: var(--green-glow);
+    line-height: 1;
+  }
+
+  .gauge-unit {
+    font-size: 11px; color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .gauge-label {
+    font-size: 12px; color: var(--text-dim);
+    letter-spacing: 1px; text-align: center;
+    text-transform: uppercase;
+  }
+
+  .gauge-nom {
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ══ KPI ROW ════════════════════════════════════════════ */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    grid-column: 1 / 4;
+  }
+
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    position: relative;
+  }
+
+  .kpi-label {
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 30px; color: var(--green-glow);
+    line-height: 1;
+  }
+
+  .kpi-unit { font-size: 14px; color: var(--text-dim); }
+  .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+  .kpi-delta {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 11px; font-weight: 500; padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .kpi-delta.up { background: rgba(42,170,114,.15); color: var(--green-bright); }
+  .kpi-delta.warn { background: rgba(232,160,32,.15); color: var(--amber); }
+  .kpi-delta.alert { background: rgba(214,48,48,.15); color: var(--red-alert); }
+
+  /* ══ GAUGE PANELS (top row) ═════════════════════════════ */
+  .gauges-row {
+    grid-column: 1 / 4;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+
+  /* ══ CHART PANELS ═══════════════════════════════════════ */
+  .chart-tall { grid-column: 1 / 3; }
+
+  /* ══ FLEET STATUS ═══════════════════════════════════════ */
+  .fleet-item {
+    display: flex; align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .fleet-item:last-child { border-bottom: none; }
+
+  .fleet-id {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; color: var(--green-bright);
+    width: 64px; flex-shrink: 0;
+  }
+
+  .fleet-bar-wrap { flex: 1; height: 6px; background: var(--green-dim); border-radius: 3px; overflow: hidden; }
+  .fleet-bar { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
+  .fleet-pct {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; width: 38px; text-align: right;
+    flex-shrink: 0;
+  }
+
+  .fleet-status {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  /* ══ SIMULATOR ════════════════════════════════════════════ */
+  .sim-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .sim-field label {
+    display: block; font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-dim);
+    margin-bottom: 5px;
+  }
+
+  .sim-field input {
+    width: 100%; padding: 8px 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--green-glow);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+    outline: none;
+    transition: border-color .2s;
+  }
+
+  .sim-field input:focus { border-color: var(--green-bright); }
+
+  .btn-calc {
+    width: 100%; padding: 10px;
+    background: var(--green-bright);
+    border: none; border-radius: 6px;
+    color: #fff;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+  }
+
+  .btn-calc:hover { background: var(--green-glow); }
+  .btn-calc:active { transform: scale(.98); }
+
+  .sim-results {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-top: 12px;
+  }
+
+  .sim-res {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px; text-align: center;
+  }
+
+  .sim-res-label { font-size: 10px; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; }
+  .sim-res-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px; color: var(--green-glow);
+    margin-top: 4px;
+  }
+
+  /* ══ NOM BADGE ══════════════════════════════════════════ */
+  .nom-badges {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  .nom-badge {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+  }
+
+  .nom-icon {
+    width: 32px; height: 32px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 10px; font-weight: 700; text-align: center;
+    flex-shrink: 0; line-height: 1.2;
+  }
+
+  .nom-ok { background: rgba(42,170,114,.2); color: var(--green-bright); }
+  .nom-warn { background: rgba(232,160,32,.2); color: var(--amber); }
+
+  .nom-text { flex: 1; }
+  .nom-name { font-size: 12px; font-weight: 500; color: var(--text-main); }
+  .nom-desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+  .nom-pct {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px;
+  }
+
+  /* ══ RESPONSIVE ════════════════════════════════════════ */
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr 1fr; }
+    .gauges-row { grid-column: 1 / 3; grid-template-columns: repeat(3, 1fr); }
+    .kpi-grid { grid-column: 1 / 3; grid-template-columns: repeat(2, 1fr); }
+    .chart-tall { grid-column: 1 / 3; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════════════ -->
+<header class="hdr">
+  <div class="hdr-logo">
+    <div class="logo-badge">S&F</div>
+    <div>
+      <h1>S&F Logística</h1>
+      <div class="hdr-sub">Gestión de Flota Sustentable · Centro de Control</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="status-dot"><div class="dot"></div> Sistema activo</div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<!-- ══ MAIN GRID ═════════════════════════════════════════ -->
+<div class="main">
+
+  <!-- — KPI ROW — -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Viajes registrados</div>
+      <div class="kpi-value" id="kpi-trips">0</div>
+      <div class="kpi-sub">En esta sesión</div>
+      <span class="kpi-delta up" id="kpi-trips-d">—</span>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Litros simulados</div>
+      <div class="kpi-value" id="kpi-liters">0.00 <span class="kpi-unit">L</span></div>
+      <div class="kpi-sub">Consumo acumulado</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">CO₂ total estimado</div>
+      <div class="kpi-value" id="kpi-co2">0.00 <span class="kpi-unit">kg</span></div>
+      <div class="kpi-sub">Factor: 2.68 kg/L diésel</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Costo total simulado</div>
+      <div class="kpi-value" id="kpi-cost">$0 <span class="kpi-unit">MXN</span></div>
+      <div class="kpi-sub">Suma de viajes</div>
+    </div>
+  </div>
+
+  <!-- — GAUGES ROW — -->
+  <div class="gauges-row">
+
+    <!-- Gauge 1: Eficiencia km/L -->
+    <div class="panel">
+      <div class="panel-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+        Eficiencia
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-canvas-wrap">
+          <canvas id="g-efficiency" width="180" height="100" role="img" aria-label="Gauge de eficiencia de combustible en km/L"></canvas>
+          <div class="gauge-val">
+            <div class="gauge-number" id="gv-efficiency">—</div>
+            <div class="gauge-unit">km/L</div>
+          </div>
+        </div>
+        <div class="gauge-label">Rendimiento de flota</div>
+        <div class="gauge-nom">Óptimo: 12 km/L</div>
+      </div>
+    </div>
+
+    <!-- Gauge 2: CO₂ vs NOM -->
+    <div class="panel">
+      <div class="panel-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13c1.5-4 4-6 5-6 1 0 3 1 5 5"/><path d="M8 7V3m0 0l-2 2m2-2 2 2"/></svg>
+        Emisiones CO₂
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-canvas-wrap">
+          <canvas id="g-co2" width="180" height="100" role="img" aria-label="Gauge de emisiones CO2 vs límite NOM"></canvas>
+          <div class="gauge-val">
+            <div class="gauge-number" id="gv-co2">—</div>
+            <div class="gauge-unit">kg CO₂</div>
+          </div>
+        </div>
+        <div class="gauge-label">Último viaje · NOM-045</div>
+        <div class="gauge-nom" id="co2-status">—</div>
+      </div>
+    </div>
+
+    <!-- Gauge 3: Cumplimiento NOM -->
+    <div class="panel">
+      <div class="panel-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8l3 3 5-5"/><circle cx="8" cy="8" r="6"/></svg>
+        Cumplimiento NOM
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-canvas-wrap">
+          <canvas id="g-compliance" width="180" height="100" role="img" aria-label="Gauge de cumplimiento de normas NOM en porcentaje"></canvas>
+          <div class="gauge-val">
+            <div class="gauge-number" id="gv-compliance">100</div>
+            <div class="gauge-unit">%</div>
+          </div>
+        </div>
+        <div class="gauge-label">Estado normativo</div>
+        <div class="gauge-nom">NOM-044 · NOM-045 · NOM-163</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- — CHART: Emisiones por viaje — -->
+  <div class="panel chart-tall">
+    <div class="panel-title">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12L6 7l3 3 5-6"/></svg>
+      Consumo y emisiones por viaje simulado
+    </div>
+    <div style="position:relative; height:220px;">
+      <canvas id="chart-trips" role="img" aria-label="Gráfica de barras mostrando litros y kg CO2 por cada viaje simulado"></canvas>
+    </div>
+    <div style="display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--text-dim);">
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#2aaa72;display:inline-block;"></span>Litros consumidos</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#e8a020;display:inline-block;"></span>kg CO₂ emitidos</span>
+    </div>
+  </div>
+
+  <!-- — FLEET STATUS — -->
+  <div class="panel">
+    <div class="panel-title">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="9" width="14" height="5" rx="1"/><path d="M3 9V5a2 2 0 012-2h6a2 2 0 012 2v4"/></svg>
+      Estado de flota
+    </div>
+    <div class="fleet-item">
+      <div class="fleet-id">SFM-001</div>
+      <div class="fleet-bar-wrap"><div class="fleet-bar" style="width:78%;background:#2aaa72;"></div></div>
+      <div class="fleet-pct" style="color:#2aaa72;">78%</div>
+      <div class="fleet-status" style="background:#2aaa72;"></div>
+    </div>
+    <div class="fleet-item">
+      <div class="fleet-id">SFM-002</div>
+      <div class="fleet-bar-wrap"><div class="fleet-bar" style="width:55%;background:#e8a020;"></div></div>
+      <div class="fleet-pct" style="color:#e8a020;">55%</div>
+      <div class="fleet-status" style="background:#e8a020;"></div>
+    </div>
+    <div class="fleet-item">
+      <div class="fleet-id">SFM-003</div>
+      <div class="fleet-bar-wrap"><div class="fleet-bar" style="width:90%;background:#2aaa72;"></div></div>
+      <div class="fleet-pct" style="color:#2aaa72;">90%</div>
+      <div class="fleet-status" style="background:#2aaa72;"></div>
+    </div>
+    <div class="fleet-item">
+      <div class="fleet-id">SFM-004</div>
+      <div class="fleet-bar-wrap"><div class="fleet-bar" style="width:32%;background:#d63030;"></div></div>
+      <div class="fleet-pct" style="color:#d63030;">32%</div>
+      <div class="fleet-status" style="background:#d63030;animation:pulse 1s infinite;"></div>
+    </div>
+    <div class="fleet-item">
+      <div class="fleet-id">SFM-005</div>
+      <div class="fleet-bar-wrap"><div class="fleet-bar" style="width:65%;background:#2aaa72;"></div></div>
+      <div class="fleet-pct" style="color:#2aaa72;">65%</div>
+      <div class="fleet-status" style="background:#2aaa72;"></div>
+    </div>
+    <div style="font-size:10px;color:var(--text-muted);margin-top:10px;letter-spacing:1px;">
+      BARRA = KM RESTANTES PARA SERVICIO
+    </div>
+  </div>
+
+  <!-- — SIMULATOR — -->
+  <div class="panel" style="grid-column:1/3;">
+    <div class="panel-title">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v4l3 3"/><circle cx="8" cy="8" r="6"/></svg>
+      Simulador de viaje — Maestro Rosas
+    </div>
+    <div class="sim-grid">
+      <div class="sim-field">
+        <label>Distancia (km)</label>
+        <input type="number" id="sim-km" placeholder="ej. 350" min="1">
+      </div>
+      <div class="sim-field">
+        <label>Rendimiento (km/L)</label>
+        <input type="number" id="sim-rend" placeholder="ej. 9.5" step="0.1" min="1">
+      </div>
+      <div class="sim-field">
+        <label>Precio combustible ($/L)</label>
+        <input type="number" id="sim-price" placeholder="ej. 24.80" step="0.1" min="1">
+      </div>
+    </div>
+    <button class="btn-calc" onclick="calcViaje()">▶ CALCULAR VIAJE</button>
+    <div class="sim-results">
+      <div class="sim-res">
+        <div class="sim-res-label">Litros</div>
+        <div class="sim-res-val" id="sr-liters">—</div>
+      </div>
+      <div class="sim-res">
+        <div class="sim-res-label">Costo estimado</div>
+        <div class="sim-res-val" id="sr-cost">—</div>
+      </div>
+      <div class="sim-res">
+        <div class="sim-res-label">CO₂ emitido</div>
+        <div class="sim-res-val" id="sr-co2">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- — NOMs Panel — -->
+  <div class="panel">
+    <div class="panel-title">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M6 6h4M6 9h4M6 12h2"/></svg>
+      Cumplimiento normativo
+    </div>
+    <div class="nom-badges">
+      <div class="nom-badge">
+        <div class="nom-icon nom-ok">NOM<br>045</div>
+        <div class="nom-text">
+          <div class="nom-name">Opacidad humo diésel</div>
+          <div class="nom-desc">Límite: 40% con turbo</div>
+        </div>
+        <div class="nom-pct" style="color:#2aaa72;" id="nom45">OK</div>
+      </div>
+      <div class="nom-badge">
+        <div class="nom-icon nom-ok">NOM<br>044</div>
+        <div class="nom-text">
+          <div class="nom-name">Emisiones veh. pesados</div>
+          <div class="nom-desc">NOₓ ≤0.4 g/kWh · PM ≤0.01</div>
+        </div>
+        <div class="nom-pct" style="color:#2aaa72;">OK</div>
+      </div>
+      <div class="nom-badge">
+        <div class="nom-icon nom-warn">NOM<br>163</div>
+        <div class="nom-text">
+          <div class="nom-name">Eficiencia y CO₂</div>
+          <div class="nom-desc">Límite CO₂ g/km por categoría</div>
+        </div>
+        <div class="nom-pct" style="color:#e8a020;" id="nom163">—</div>
+      </div>
+      <div class="nom-badge">
+        <div class="nom-icon nom-ok">NOM<br>086</div>
+        <div class="nom-text">
+          <div class="nom-name">Calidad combustible</div>
+          <div class="nom-desc">Azufre ≤15 ppm (ULSD)</div>
+        </div>
+        <div class="nom-pct" style="color:#2aaa72;">OK</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- — CHART: Costo vs km — -->
+  <div class="panel" style="grid-column:2/4;">
+    <div class="panel-title">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 11l4-4 3 3 5-6"/><circle cx="14" cy="4" r="1.5" fill="currentColor"/></svg>
+      Distribución de costo vs km
+    </div>
+    <div style="position:relative; height:180px;">
+      <canvas id="chart-scatter" role="img" aria-label="Gráfica de dispersión de costo vs km por viaje"></canvas>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+/* ── STATE ───────────────────────────────────────────────── */
+const state = {
+  trips: [],
+  totalLiters: 0,
+  totalCO2: 0,
+  totalCost: 0,
+  lastEfficiency: null,
+  lastCO2trip: null,
+};
+
+/* ── CLOCK ───────────────────────────────────────────────── */
+function updateClock() {
+  const now = new Date();
+  const t = [now.getHours(), now.getMinutes(), now.getSeconds()]
+    .map(n => String(n).padStart(2, '0')).join(':');
+  document.getElementById('clock').textContent = t;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ── GAUGE FACTORY ───────────────────────────────────────── */
+function makeGauge(id, min, max, thresholds, colors) {
+  const ctx = document.getElementById(id).getContext('2d');
+  const segments = thresholds.length;
+  const segSize = (max - min) / segments;
+  const bgData = thresholds.map(() => 1);
+  const chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [
+        { data: bgData, backgroundColor: colors.map(c => c + '44'), borderWidth: 0, cutout: '72%', rotation: -90, circumference: 180 },
+        { data: [0, max - min], backgroundColor: ['#2aaa72', '#ffffff11'], borderWidth: 0, cutout: '72%', rotation: -90, circumference: 180 }
+      ]
+    },
+    options: {
+      responsive: false, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      animation: { duration: 600, easing: 'easeOutQuart' }
+    }
+  });
+  return chart;
+}
+
+/* ── INIT GAUGES ─────────────────────────────────────────── */
+const gEfficiency = makeGauge('g-efficiency', 0, 20,
+  [1,1,1,1], ['#d63030','#e8a020','#2aaa72','#3ddf96']);
+
+const gCO2 = makeGauge('g-co2', 0, 500,
+  [1,1,1], ['#2aaa72','#e8a020','#d63030']);
+
+const gCompliance = makeGauge('g-compliance', 0, 100,
+  [1,1,1], ['#d63030','#e8a020','#2aaa72']);
+
+function updateGauge(chart, val, min, max) {
+  const clamped = Math.max(min, Math.min(max, val));
+  const filled = clamped - min;
+  const empty = max - min - filled;
+  chart.data.datasets[1].data = [filled, empty];
+  chart.update('none');
+}
+
+function gaugeColor(val, min, max) {
+  const pct = (val - min) / (max - min);
+  if (pct < .33) return '#2aaa72';
+  if (pct < .66) return '#e8a020';
+  return '#d63030';
+}
+
+/* ── CHARTS ──────────────────────────────────────────────── */
+const ctxTrips = document.getElementById('chart-trips').getContext('2d');
+const chartTrips = new Chart(ctxTrips, {
+  type: 'bar',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Litros', data: [], backgroundColor: '#2aaa7288', borderColor: '#2aaa72', borderWidth: 1, borderRadius: 4 },
+      { label: 'kg CO₂', data: [], backgroundColor: '#e8a02088', borderColor: '#e8a020', borderWidth: 1, borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#6a9a7a', font: { size: 11 } }, grid: { color: '#1e4a3244' } },
+      y: { ticks: { color: '#6a9a7a', font: { size: 11 } }, grid: { color: '#1e4a3244' } }
+    }
+  }
+});
+
+const ctxScatter = document.getElementById('chart-scatter').getContext('2d');
+const chartScatter = new Chart(ctxScatter, {
+  type: 'scatter',
+  data: {
+    datasets: [{
+      label: 'Viajes',
+      data: [],
+      backgroundColor: '#2aaa7299',
+      borderColor: '#2aaa72',
+      pointRadius: 7,
+      pointHoverRadius: 9
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `${ctx.raw.x} km · $${ctx.raw.y.toFixed(0)} MXN`
+        }
+      }
+    },
+    scales: {
+      x: { title: { display: true, text: 'Distancia (km)', color: '#6a9a7a', font: { size: 11 } }, ticks: { color: '#6a9a7a' }, grid: { color: '#1e4a3244' } },
+      y: { title: { display: true, text: 'Costo ($MXN)', color: '#6a9a7a', font: { size: 11 } }, ticks: { color: '#6a9a7a' }, grid: { color: '#1e4a3244' } }
+    }
+  }
+});
+
+/* ── SIMULATOR ───────────────────────────────────────────── */
+function calcViaje() {
+  const km    = parseFloat(document.getElementById('sim-km').value);
+  const rend  = parseFloat(document.getElementById('sim-rend').value);
+  const price = parseFloat(document.getElementById('sim-price').value);
+
+  if (!km || !rend || !price || rend <= 0) {
+    alert('Por favor llena los tres campos con valores válidos.');
+    return;
+  }
+
+  const liters = km / rend;
+  const co2    = liters * 2.68;
+  const cost   = liters * price;
+
+  document.getElementById('sr-liters').textContent = liters.toFixed(2) + ' L';
+  document.getElementById('sr-cost').textContent   = '$' + cost.toFixed(0);
+  document.getElementById('sr-co2').textContent    = co2.toFixed(1) + ' kg';
+
+  state.totalLiters += liters;
+  state.totalCO2    += co2;
+  state.totalCost   += cost;
+  state.lastEfficiency = rend;
+  state.lastCO2trip    = co2;
+
+  const tripN = state.trips.length + 1;
+  state.trips.push({ km, liters, co2, cost });
+
+  /* Update KPIs */
+  document.getElementById('kpi-trips').textContent  = tripN;
+  document.getElementById('kpi-trips-d').textContent = `+1 viaje`;
+  document.getElementById('kpi-liters').innerHTML   = state.totalLiters.toFixed(2) + ' <span class="kpi-unit">L</span>';
+  document.getElementById('kpi-co2').innerHTML      = state.totalCO2.toFixed(1) + ' <span class="kpi-unit">kg</span>';
+  document.getElementById('kpi-cost').innerHTML     = '$' + Math.round(state.totalCost) + ' <span class="kpi-unit">MXN</span>';
+
+  /* Update gauges */
+  updateGauge(gEfficiency, rend, 0, 20);
+  document.getElementById('gv-efficiency').textContent = rend.toFixed(1);
+  gEfficiency.data.datasets[1].backgroundColor = [gaugeColor(rend, 20, 0), '#ffffff11']; // reversed: higher is better
+  gEfficiency.update('none');
+
+  updateGauge(gCO2, co2, 0, 500);
+  document.getElementById('gv-co2').textContent = co2.toFixed(1);
+  const co2col = gaugeColor(co2, 0, 500);
+  gCO2.data.datasets[1].backgroundColor = [co2col, '#ffffff11'];
+  gCO2.update('none');
+
+  const co2Ok = co2 < 150;
+  document.getElementById('co2-status').textContent = co2Ok
+    ? '✓ Dentro del límite NOM-163'
+    : '⚠ Revisar — supera referencia';
+  document.getElementById('co2-status').style.color = co2Ok ? '#2aaa72' : '#e8a020';
+
+  const compliance = co2Ok ? 100 : Math.max(0, 100 - Math.round((co2 - 150) / 5));
+  updateGauge(gCompliance, compliance, 0, 100);
+  document.getElementById('gv-compliance').textContent = compliance;
+
+  const effColor = rend >= 12 ? '#2aaa72' : rend >= 8 ? '#e8a020' : '#d63030';
+  gEfficiency.data.datasets[1].backgroundColor = [effColor, '#ffffff11'];
+  gEfficiency.update('none');
+
+  /* NOM-163 badge */
+  document.getElementById('nom163').textContent = co2Ok ? 'OK' : '⚠';
+  document.getElementById('nom163').style.color = co2Ok ? '#2aaa72' : '#e8a020';
+
+  /* Trip chart */
+  const label = `V${tripN}`;
+  chartTrips.data.labels.push(label);
+  chartTrips.data.datasets[0].data.push(parseFloat(liters.toFixed(2)));
+  chartTrips.data.datasets[1].data.push(parseFloat(co2.toFixed(1)));
+  chartTrips.update();
+
+  /* Scatter */
+  chartScatter.data.datasets[0].data.push({ x: km, y: parseFloat(cost.toFixed(0)) });
+  chartScatter.update();
+}
+</script>
+</body>
+</html>

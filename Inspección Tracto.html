@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<!-- saved from url=(0205)https://emigt3rs.github.io/AUTOTRANSPORTE/?fbclid=PAdGRleARofV1leHRuA2FlbQIxMQBzcnRjBmFwcF9pZA8xMjQwMjQ1NzQyODc0MTQAAaeMaTd5bT5dGwTHkA-njfzKlnjeNwBCSeyhTjxJlwxq9dlwTbob5jLu0aqz-Q_aem_rHXRhwoIqvGJSome0Pn5gg -->
+<html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inspección Tracto</title>
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  background:#0f172a;
+  color:white;
+  margin:0;
+  transition:0.3s;
+}
+.container{
+  max-width:700px;
+  margin:auto;
+  padding:15px;
+}
+h1{text-align:center;}
+input{
+  width:100%;
+  padding:8px;
+  margin-bottom:10px;
+  font-size:11px;
+}
+.card{
+  background:#1e293b;
+  padding:12px;
+  margin:10px 0;
+  border-radius:10px;
+}
+button{
+  padding:8px;
+  margin:4px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:11px;
+}
+.si{background:#22c55e;color:white;}
+.no{background:#ef4444;color:white;}
+.btn{
+  width:100%;
+  margin-top:10px;
+  background:#3b82f6;
+  color:white;
+}
+.sem{
+  text-align:center;
+  font-size:60px;
+  margin-top:10px;
+}
+.resultado{
+  text-align:center;
+  font-size:14px;
+}
+.alerta-roja{
+  background:#450a0a !important;
+  animation:parpadeo 0.6s infinite;
+}
+.alerta-naranja{
+  background:#7c2d12 !important;
+  animation:parpadeoNaranja 1s infinite;
+}
+@keyframes parpadeo{
+  0%{filter:brightness(1);}
+  50%{filter:brightness(1.8);}
+  100%{filter:brightness(1);}
+}
+@keyframes parpadeoNaranja{
+  0%{filter:brightness(1);}
+  50%{filter:brightness(1.4);}
+  100%{filter:brightness(1);}
+}
+.truckAnim{
+  position:fixed;
+  bottom:20px;
+  left:-200px;
+  font-size:60px;
+  display:none;
+}
+@keyframes drive{
+  0%{left:-200px;}
+  100%{left:110%;}
+}
+.confeti{
+  position:fixed;
+  width:6px;
+  height:6px;
+  top:-10px;
+  animation:fall 3s linear infinite;
+}
+@keyframes fall{
+  to{transform:translateY(100vh) rotate(360deg);}
+}
+</style>
+</head>
+
+<body>
+<!-- Sonidos externos -->
+<audio id="okSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a1d5c7.mp3"></audio>
+<audio id="warnSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_8d5c0b9b9f.mp3"></audio>
+<audio id="badSound" src="https://cdn.pixabay.com/download/audio/2021/08/04/audio_6f7c4f5c0d.mp3"></audio>
+
+<div class="container">
+<h1>🚛 Inspección de Tracto</h1>
+<input id="chofer" placeholder="Nombre del chofer">
+<div id="form">
+  <div class="card">
+    <b>1.</b> La presión de aire está entre 90-120 PSI antes de iniciar marcha<br>
+    <button class="si" onclick="set(0,true,this)">Sí</button>
+         <button class="no" onclick="set(0,false,this)">No</button>
+  </div>
+  <div class="card">
+    <b>2.</b> ¿Hay caída de presión con el motor apagado?<br>
+    <button onclick="set(1,false,this)" style="background:#22c55e;color:white;">No</button>
+         <button onclick="set(1,true,this)" style="background:#ef4444;color:white;">Sí</button>
+  </div>
+  <div class="card">
+    <b>3.</b> No hay fugas de aire en mangueras o válvulas<br>
+    <button onclick="set(2,false,this)" style="background:#22c55e;color:white;">No</button>
+         <button onclick="set(2,true,this)" style="background:#ef4444;color:white;">Sí</button>
+  </div>
+  <div class="card">
+    <b>4.</b> El compresor carga presión correctamente<br>
+    <button class="si" onclick="set(3,true,this)">Sí</button>
+         <button class="no" onclick="set(3,false,this)">No</button>
+  </div>
+  <div class="card">
+    <b>5.</b> El pedal de freno responde firme<br>
+    <button class="si" onclick="set(4,true,this)">Sí</button>
+         <button class="no" onclick="set(4,false,this)">No</button>
+  </div>
+  <div class="card">
+    <b>6.</b> Los frenos no presentan retraso excesivo<br>
+    <button onclick="set(5,false,this)" style="background:#22c55e;color:white;">No</button>
+         <button onclick="set(5,true,this)" style="background:#ef4444;color:white;">Sí</button>
+  </div>
+  <div class="card">
+    <b>7.</b> Los cambios entran suavemente<br>
+    <button class="si" onclick="set(6,true,this)">Sí</button>
+         <button class="no" onclick="set(6,false,this)">No</button>
+  </div>
+  <div class="card">
+    <b>8.</b> No hay ruidos anormales al cambiar de marcha<br>
+    <button onclick="set(7,false,this)" style="background:#22c55e;color:white;">No</button>
+         <button onclick="set(7,true,this)" style="background:#ef4444;color:white;">Sí</button>
+  </div>
+  <div class="card">
+    <b>9.</b> La transmisión no vibra excesivamente<br>
+    <button onclick="set(8,false,this)" style="background:#22c55e;color:white;">No</button>
+         <button onclick="set(8,true,this)" style="background:#ef4444;color:white;">Sí</button>
+  </div>
+  <div class="card">
+    <b>10.</b> El clutch es normal<br>
+    <button class="si" onclick="set(9,true,this)">Sí</button>
+         <button class="no" onclick="set(9,false,this)">No</button>
+  </div>
+  <div class="card">
+    <b>11.</b> No hay olor a quemado en transmisión o clutch<br>
+    <button onclick="set(10,false,this)" style="background:#22c55e;color:white;">No</button>
+         <button onclick="set(10,true,this)" style="background:#ef4444;color:white;">Sí</button>
+  </div></div>
+
+<!-- Botones -->
+<button class="btn" onclick="evaluar()">Evaluar</button>
+<button class="btn" style="background:#f59e0b;margin-top:5px;" onclick="reiniciar()">Reiniciar</button>
+
+<div class="sem" id="sem"></div>
+<div class="resultado" id="res"></div>
+</div>
+
+<div id="truckAnim" class="truckAnim">🚛💨</div>
+
+<script>
+const preguntas = [
+  {t:"La presión de aire está entre 90-120 PSI antes de iniciar marcha",c:true},
+  {t:"¿Hay caída de presión con el motor apagado?",c:true,invertida:true},
+  {t:"No hay fugas de aire en mangueras o válvulas",c:true,invertida:true}, 
+  {t:"El compresor carga presión correctamente",c:true},
+  {t:"El pedal de freno responde firme",c:false},
+  {t:"Los frenos no presentan retraso excesivo",c:true,invertida:true}, 
+  {t:"Los cambios entran suavemente",c:false},
+  {t:"No hay ruidos anormales al cambiar de marcha",c:true,invertida:true}, 
+  {t:"La transmisión no vibra excesivamente",c:true,invertida:true}, 
+  {t:"El clutch es normal",c:false},
+  {t:"No hay olor a quemado en transmisión o clutch",c:true,invertida:true} 
+];
+
+let r=[];
+const form=document.getElementById("form");
+preguntas.forEach((p,i)=>{
+  r[i]=null;
+  form.innerHTML+=`
+  <div class="card">
+    <b>${i+1}.</b> ${p.t}<br>
+    ${p.invertida
+      ? `<button onclick="set(${i},false,this)" style="background:#22c55e;color:white;">No</button>
+         <button onclick="set(${i},true,this)" style="background:#ef4444;color:white;">Sí</button>`
+      : `<button class="si" onclick="set(${i},true,this)">Sí</button>
+         <button class="no" onclick="set(${i},false,this)">No</button>`}
+  </div>`;
+});
+
+function set(i,val,btn){
+  r[i]=val;
+  let b=btn.parentElement.querySelectorAll("button");
+  b.forEach(x=>x.style.outline="none");
+  btn.style.outline="2px solid white";
+}
+
+function animarCamion(){
+  let t=document.getElementById("truckAnim");
+  t.style.display="block";
+  t.style.animation="drive 2.5s linear forwards";
+  setTimeout(()=>{ t.style.display="none"; t.style.animation="none"; },2600);
+}
+
+function evaluar(){
+  document.body.classList.remove("alerta-roja","alerta-naranja");
+  document.body.style.background="#0f172a";
+  let critico=false;
+  let medio=false;
+  for(let i=0;i<preguntas.length;i++){
+    if(r[i]===null){alert("Faltan respuestas");return;}
+    let fallo=false;
+    if(preguntas[i].invertida){ if(r[i]===true) fallo=true; }
+    else{ if(r[i]===false && preguntas[i].c) fallo=true; if(r[i]===false && !preguntas[i].c) medio=true; }
+    if(fallo && preguntas[i].c) critico=true;
+  }
+  const sem=document.getElementById("sem");
+  const res=document.getElementById("res");
+  const ok=document.getElementById("okSound");
+  const warn=document.getElementById("warnSound");
+  const bad=document.getElementById("badSound");
+  if(critico){
+    document.body.classList.add("alerta-roja");
+    sem.innerHTML="🔴";
+    res.innerHTML="⛔ NO CIRCULAR";
+    bad.play();
+  } else if(medio){
+    document.body.classList.add("alerta-naranja");
+    sem.innerHTML="🟠";
+    res.innerHTML="🛠️ REVISAR EN TALLER";
+    warn.play();
+  } else{
+    sem.innerHTML="🟢";
+    res.innerHTML="🚛 A CIRCULARRRR";
+    ok.play();
+    confeti();
+    animarCamion();
+    document.body.style.background="#14532d";
+  }
+  guardar();
+}
+
+function reiniciar(){
+  r = Array(preguntas.length).fill(null);
+  document.querySelectorAll('.card button').forEach(b => b.style.outline = 'none');
+  document.getElementById('sem').innerHTML = '';
+  document.getElementById('res').innerHTML = '';
+  document.body.classList.remove("alerta-roja","alerta-naranja");
+  document.body.style.background="#0f172a";
+}
+
+function guardar(){
+  let h=JSON.parse(localStorage.getItem("hist")||"[]");
+  h.push({chofer:document.getElementById("chofer").value,
+          estado:document.getElementById("res").innerText,
+          fecha:new Date().toLocaleString()});
+  localStorage.setItem("hist",JSON.stringify(h));
+}
+
+function confeti(){
+  for(let i=0;i<50;i++){
+    let c=document.createElement("div");
+    c.className="confeti";
+    c.style.left=Math.random()*100+"vw";
+    c.style.background=["red","blue","yellow","green"][Math.floor(Math.random()*4)];
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),3000);
+  }
+}
+</script>
+
+</body></html>
