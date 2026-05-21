@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector de Ojos y Bostezos - FUNCIONAL</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #000;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #ec4899;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .video-area {
+            background: #111;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            height: 500px;
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #video {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #00ff00;
+            color: #000;
+            flex: 1;
+        }
+
+        button:hover {
+            background: #00cc00;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .reset-btn {
+            background: #ff6600 !important;
+            color: white !important;
+        }
+
+        .right-panel {
+            background: #111;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-section {
+            background: #1a1a1a;
+            border: 1px solid #00ff00;
+            padding: 12px;
+            border-radius: 5px;
+        }
+
+        .control-label {
+            color: #00ff00;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .control-value {
+            color: #ffff00;
+            font-size: 0.9em;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+
+        .status {
+            background: #1a1a1a;
+            border: 1px solid #ff6600;
+            padding: 12px;
+            border-radius: 5px;
+            color: #ff6600;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .status-ok {
+            color: #00ff00;
+            border-color: #00ff00;
+        }
+
+        .log-area {
+            background: #1a1a1a;
+            border: 1px solid #00ff00;
+            border-radius: 5px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85em;
+            color: #00ff00;
+            grid-column: 1 / -1;
+        }
+
+        .log-line {
+            margin: 3px 0;
+        }
+
+        .log-error {
+            color: #ff0000;
+        }
+
+        .log-success {
+            color: #00ff00;
+        }
+
+        .log-info {
+            color: #ffff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 cony tu asistente inteligente</h1>
+
+        <div class="main-grid">
+            <div>
+                <div class="video-area">
+                    <canvas id="canvas"></canvas>
+                    <video id="video" playsinline></video>
+                </div>
+
+                <div class="controls">
+                    <button id="startBtn" onclick="iniciarCamara()">▶️ INICIAR</button>
+                    <button id="stopBtn" onclick="detenerCamara()" style="display:none;">⏹️ DETENER</button>
+                    <button class="reset-btn" onclick="resetear()">🔄 RESETEAR</button>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="control-section">
+                    <div class="control-label">
+                        👁️ OJO DERECHO
+                        <span class="control-value" id="derState">--</span>
+                    </div>
+                    <div class="control-value">EAR: <span id="derEAR">0.000</span></div>
+                    <div class="control-label" style="margin-top: 8px;">
+                        Umbral: <span id="derUmbral">1.400</span>
+                    </div>
+                    <input type="range" id="sliderDer" min="0.5" max="2.0" step="0.01" value="1.110" onchange="actualizarUmbrales()">
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">
+                        👁️ OJO IZQUIERDO
+                        <span class="control-value" id="izqState">--</span>
+                    </div>
+                    <div class="control-value">EAR: <span id="izqEAR">0.000</span></div>
+                    <div class="control-label" style="margin-top: 8px;">
+                        Umbral: <span id="izqUmbral">0.150</span>
+                    </div>
+                    <input type="range" id="sliderIzq" min="0.05" max="0.35" step="0.001" value="0.288" onchange="actualizarUmbrales()">
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">
+                        ⏱️ ALARMA OJOS
+                        <span class="control-value" id="eyesClosedTime">0.0s</span>
+                    </div>
+                    <div class="control-label" style="margin-top: 8px;">
+                        Alarma en: <span id="alarmTime">5.0</span>s
+                    </div>
+                    <input type="range" id="sliderAlarm" min="1" max="30" step="0.5" value="1.0" onchange="actualizarUmbrales()">
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">
+                        😴 BOSTEZOS (2 MIN)
+                        <span class="control-value" id="bozCount">0</span>
+                    </div>
+                    <div class="control-value">MAR: <span id="MAR">0.000</span></div>
+                    <div class="control-label" style="margin-top: 8px;">
+                        Umbral: <span id="bozUmbral">0.800</span>
+                    </div>
+                    <div class="control-label" style="margin-top: 8px;">
+                        ⏱️ Timer: <span id="bozTimer">120s</span>
+                    </div>
+                    <input type="range" id="sliderBoz" min="0.2" max="1.0" step="0.05" value="0.800" onchange="actualizarUmbrales()">
+                </div>
+
+                <div class="status" id="statusDiv">
+                    Presiona INICIAR
+                </div>
+            </div>
+        </div>
+
+        <div class="log-area" id="logArea"></div>
+    </div>
+
+    <script async src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+
+    <script>
+        // ==================== VARIABLES ====================
+        let videoElement = document.getElementById('video');
+        let canvasElement = document.getElementById('canvas');
+        let canvasCtx = canvasElement.getContext('2d');
+        let logArea = document.getElementById('logArea');
+
+        let isRunning = false;
+        let faceMesh = null;
+
+        // Constantes de ojos
+        const LEFT_EYE = [382, 381, 380, 374, 373, 390, 249];
+        const RIGHT_EYE = [33, 160, 158, 133, 153, 144, 263];
+
+        // Umbrales
+        let umbral_der = 1.110;
+        let umbral_izq = 0.288;
+        let tiempoMaximoOjosCerrados = 1.0;
+
+        // Colas para promedios
+        let colaLeft = [];
+        let colaRight = [];
+
+        // Control de alarma
+        let tiempoOjosCerrados = 0;
+        let contadorAlermas = 0;
+        let alarmaActivada = false;
+        let tiempoUltimaAlarmaVoz = 0; // Para controlar repetición de voz
+        const intervaloAlarmaVoz = 3000; // Repetir voz cada 3 segundos
+
+        // Bostezos
+        let contadorBostezos = 0;
+        let bostezoDetectado = false;
+        let umbral_bostezo = 0.800;
+        let tiemposBostezos = []; // Cola con timestamps de bostezos
+        let alarmaBostezoActivada = false;
+        let tiempoActivacionAlarma = 0; // Cuándo se activó la alarma
+        let alarmaYaReseteada = false; // Flag para evitar múltiples reseteos
+        let tiempoUltimoReseteoAlarma = 0; // Cuándo se reseteó por última vez
+        let tiempoInicialCiclo = 0; // Tiempo cuando inicia el ciclo (0 = pausado)
+        const INTERVALO_BOSTEZOS = 120 * 1000; // 2 minutos
+
+        // Alarma de falta de rostro
+        let tiempoSinRostro = 0;
+        let tiempoMaximoSinRostro = 3.0; // 3 segundos
+        let alarmaRostroActivada = false;
+        let tiempoUltimaAlarmaVozRostro = 0;
+        const intervaloAlarmaVozRostro = 3000; // Repetir voz cada 3 segundos
+
+        // Control de síntesis de voz
+        let mensajeEnCurso = false;
+
+        // Asistente de voz
+        const synth = window.speechSynthesis;
+
+        // ==================== FUNCIONES ====================
+
+        function agregarLog(mensaje, tipo = 'info') {
+            const linea = document.createElement('div');
+            linea.className = 'log-line log-' + tipo;
+            linea.textContent = mensaje;
+            logArea.appendChild(linea);
+            logArea.scrollTop = logArea.scrollHeight;
+            console.log(mensaje);
+        }
+
+        function actualizarUmbrales() {
+            umbral_der = parseFloat(document.getElementById('sliderDer').value);
+            umbral_izq = parseFloat(document.getElementById('sliderIzq').value);
+            tiempoMaximoOjosCerrados = parseFloat(document.getElementById('sliderAlarm').value);
+            umbral_bostezo = parseFloat(document.getElementById('sliderBoz').value);
+
+            document.getElementById('derUmbral').textContent = umbral_der.toFixed(3);
+            document.getElementById('izqUmbral').textContent = umbral_izq.toFixed(3);
+            document.getElementById('alarmTime').textContent = tiempoMaximoOjosCerrados.toFixed(1);
+            document.getElementById('bozUmbral').textContent = umbral_bostezo.toFixed(3);
+        }
+
+        function calcularEAR(ojo, landmarks) {
+            try {
+                const puntos = ojo.map(idx => landmarks[idx]);
+                const dist1 = Math.hypot(puntos[1].x - puntos[5].x, puntos[1].y - puntos[5].y);
+                const dist2 = Math.hypot(puntos[2].x - puntos[4].x, puntos[2].y - puntos[4].y);
+                const dist3 = Math.hypot(puntos[0].x - puntos[3].x, puntos[0].y - puntos[3].y);
+                if (dist3 === 0) return 0;
+                return (dist1 + dist2) / (2.0 * dist3);
+            } catch (e) {
+                return 0;
+            }
+        }
+
+        function calcularMAR(landmarks) {
+            try {
+                const p_superior = landmarks[61];
+                const p_inferior = landmarks[82];
+                const p_izq = landmarks[61];
+                const p_der = landmarks[291];
+
+                const distancia_vertical = Math.hypot(p_superior.x - p_inferior.x, p_superior.y - p_inferior.y);
+                const distancia_horizontal = Math.hypot(p_izq.x - p_der.x, p_izq.y - p_der.y);
+
+                if (distancia_horizontal === 0) return 0;
+                return distancia_vertical / distancia_horizontal;
+            } catch (e) {
+                return 0;
+            }
+        }
+
+        function hablar(texto) {
+            if (mensajeEnCurso) {
+                return;
+            }
+
+            synth.cancel();
+            mensajeEnCurso = true;
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = 'es-ES';
+            utterance.rate = 0.9;
+            utterance.pitch = 2.0;
+            utterance.volume = 1.0;
+
+            utterance.onend = () => {
+                mensajeEnCurso = false;
+            };
+
+            utterance.onerror = () => {
+                mensajeEnCurso = false;
+            };
+
+            synth.speak(utterance);
+        }
+
+        function verificarBostezosCronicoS() {
+            // Si hay 3 o más bostezos
+            if (tiemposBostezos.length >= 3 && !alarmaBostezoActivada) {
+                // Verificar si los 3 bostezos ocurrieron en 120 segundos o menos
+                const primerBostezo = tiemposBostezos[0];
+                const tercerBostezo = tiemposBostezos[2];
+                const diferencia = tercerBostezo - primerBostezo;
+                const doceMinutos = 120 * 1000; // 120 segundos en milisegundos
+                
+                if (diferencia <= doceMinutos) {
+                    // ✅ Los 3 bostezos ocurrieron dentro de 120 segundos
+                    alarmaBostezoActivada = true;
+                    const mensaje = 'Haz bostezado 3 veces en un lapso de 2 minutos. Por favor, tienes que tomar un descanso obligatorio.';
+                    agregarLog('⚠️ ALERTA BOSTEZOS: ' + mensaje, 'error');
+                    hablar(mensaje);
+                    
+                    // RESETEAR INMEDIATAMENTE
+                    tiemposBostezos = [];
+                    contadorBostezos = 0;
+                    tiempoInicialCiclo = 0;
+                    bostezoDetectado = false;
+                    document.getElementById('bozCount').textContent = '0';
+                    document.getElementById('bozTimer').textContent = '120s';
+                    document.getElementById('bozTimer').style.color = '#00ff00';
+                    agregarLog('✅ Ciclo reseteado - Esperando siguiente bostezo', 'success');
+                    
+                    // Permitir nueva alarma después de un pequeño delay
+                    setTimeout(() => {
+                        alarmaBostezoActivada = false;
+                    }, 500);
+                }
+            }
+        }
+
+        function actualizarTimerBostezos() {
+            const ahora = Date.now();
+            const doceMinutos = 120 * 1000;
+            
+            // Si timer está pausado (tiempoInicialCiclo === 0)
+            if (tiempoInicialCiclo === 0) {
+                document.getElementById('bozTimer').textContent = '120s';
+                document.getElementById('bozTimer').style.color = '#00ff00';
+            } 
+            // Si timer está activo
+            else {
+                const tiempoTranscurrido = ahora - tiempoInicialCiclo;
+                const tiempoRestante = Math.ceil((doceMinutos - tiempoTranscurrido) / 1000);
+                document.getElementById('bozTimer').textContent = Math.max(0, tiempoRestante) + 's';
+                document.getElementById('bozTimer').style.color = tiempoRestante > 60 ? '#00ff00' : '#ff6600';
+                
+                // Si tiempo restante llegó a 0, resetear automáticamente
+                if (tiempoRestante <= 0) {
+                    tiemposBostezos = [];
+                    contadorBostezos = 0;
+                    tiempoInicialCiclo = 0;
+                    bostezoDetectado = false;
+                    document.getElementById('bozCount').textContent = '0';
+                    document.getElementById('bozTimer').textContent = '120s';
+                    document.getElementById('bozTimer').style.color = '#00ff00';
+                    agregarLog('⏱️ Tiempo expirado - Contador reseteado', 'info');
+                }
+            }
+        }
+
+        function iniciarAsistenteVoz() {
+            const instrucciones = [
+                'Abre los ojos inmediatamente por tu seguridad',
+                'Mantén los ojos abiertos mientras conduces',
+                'La somnolencia es peligrosa, abre los ojos',
+                'Por favor, abre los ojos ahora mismo',
+                'Necesitas estar atento, abre los ojos'
+            ];
+            
+            const instruccion = instrucciones[Math.floor(Math.random() * instrucciones.length)];
+            agregarLog('🎤 Asistente: ' + instruccion, 'success');
+            hablar(instruccion);
+        }
+
+        function detenerAsistenteVoz() {
+            // Solo cancelar si no hay mensaje en curso
+            if (!mensajeEnCurso) {
+                synth.cancel();
+            }
+            agregarLog('🎤 Asistente desactivado', 'info');
+        }
+
+        function obtenerRectangulosNormalizados(ojoIndices1, ojoIndices2, landmarks) {
+            // Calcular bounding boxes precisos
+            const calcularBbox = (indices) => {
+                const puntos = indices.map(idx => landmarks[idx]);
+                const xs = puntos.map(p => p.x * canvasElement.width);
+                const ys = puntos.map(p => p.y * canvasElement.height);
+                const minX = Math.min(...xs);
+                const maxX = Math.max(...xs);
+                const minY = Math.min(...ys);
+                const maxY = Math.max(...ys);
+                const centerX = (minX + maxX) / 2;
+                const centerY = (minY + maxY) / 2;
+                const width = maxX - minX;
+                const height = maxY - minY;
+                return { centerX, centerY, width, height };
+            };
+            
+            const bbox1 = calcularBbox(ojoIndices1);
+            const bbox2 = calcularBbox(ojoIndices2);
+            
+            // Calcular tamaño promedio para ambos ojos
+            const tamanio1 = Math.max(bbox1.width, bbox1.height) * 0.4;
+            const tamanio2 = Math.max(bbox2.width, bbox2.height) * 0.4;
+            const tamanioPromedio = (tamanio1 + tamanio2) / 2;
+            
+            // Crear rectángulos con tamaño promedio pero centros individuales
+            return {
+                rect1: {
+                    minX: bbox1.centerX - tamanioPromedio / 2,
+                    maxX: bbox1.centerX + tamanioPromedio / 2,
+                    minY: bbox1.centerY - tamanioPromedio / 2,
+                    maxY: bbox1.centerY + tamanioPromedio / 2
+                },
+                rect2: {
+                    minX: bbox2.centerX - 60 - tamanioPromedio / 2,
+                    maxX: bbox2.centerX - 60 + tamanioPromedio / 2,
+                    minY: bbox2.centerY - tamanioPromedio / 2,
+                    maxY: bbox2.centerY + tamanioPromedio / 2
+                }
+            };
+        }
+
+        function dibujarRectanguloOjo(rect, color, label) {
+            const width = rect.maxX - rect.minX;
+            const height = rect.maxY - rect.minY;
+            
+            canvasCtx.strokeStyle = color;
+            canvasCtx.lineWidth = 3;
+            canvasCtx.strokeRect(rect.minX, rect.minY, width, height);
+            
+            // Etiqueta
+            canvasCtx.fillStyle = color;
+            canvasCtx.font = 'bold 14px Arial';
+            canvasCtx.fillText(label, rect.minX + 5, rect.minY - 5);
+        }
+
+        function activarAlarma() {
+            agregarLog('🔴 ¡¡ALARMA!! Ojos cerrados demasiado tiempo', 'error');
+            contadorAlermas++;
+
+            // Alarma visual
+            document.body.style.background = 'repeating-linear-gradient(45deg, #ff0000, #ff0000 10px, #000 10px, #000 20px)';
+
+            // Alarma de audio
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.frequency.value = 800;
+                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                agregarLog('Audio no disponible', 'info');
+            }
+
+            setTimeout(() => {
+                document.body.style.background = '#1a1a1a';
+            }, 2000);
+        }
+
+        function resetear() {
+            umbral_der = 1.4;
+            umbral_izq = 0.15;
+            tiempoMaximoOjosCerrados = 5.0;
+            umbral_bostezo = 0.5;
+            tiempoOjosCerrados = 0;
+            contadorAlermas = 0;
+            alarmaActivada = false;
+            tiempoUltimaAlarmaVoz = 0;
+            contadorBostezos = 0;
+            tiemposBostezos = [];
+            alarmaBostezoActivada = false;
+            alarmaYaReseteada = false;
+            tiempoActivacionAlarma = 0;
+            tiempoUltimoReseteoAlarma = 0;
+            tiempoInicialCiclo = 0;
+            bostezoDetectado = false;
+            colaLeft = [];
+            colaRight = [];
+            detenerAsistenteVoz();
+
+            tiempoSinRostro = 0;
+            alarmaRostroActivada = false;
+            tiempoUltimaAlarmaVozRostro = 0;
+
+            document.getElementById('sliderDer').value = 1.4;
+            document.getElementById('sliderIzq').value = 0.15;
+            document.getElementById('sliderAlarm').value = 5;
+            document.getElementById('sliderBoz').value = 0.5;
+            actualizarUmbrales();
+
+            agregarLog('✅ Valores reseteados', 'success');
+        }
+
+        async function iniciarCamara() {
+            try {
+                agregarLog('🔵 BOTÓN PRESIONADO', 'info');
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('startBtn').textContent = '⏳ Iniciando...';
+
+                agregarLog('🔵 Pidiendo acceso a cámara...', 'info');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+                });
+
+                agregarLog('🟢 Cámara obtenida', 'success');
+                videoElement.srcObject = stream;
+
+                await new Promise((resolve) => {
+                    videoElement.onloadedmetadata = () => {
+                        canvasElement.width = videoElement.videoWidth;
+                        canvasElement.height = videoElement.videoHeight;
+                        agregarLog(`🟢 Canvas: ${canvasElement.width}x${canvasElement.height}`, 'success');
+                        videoElement.play();
+                        agregarLog('🟢 Video reproduciendo', 'success');
+                        resolve();
+                    };
+                });
+
+                if (!faceMesh) {
+                    agregarLog('🔵 Cargando MediaPipe...', 'info');
+                    faceMesh = new FaceMesh({
+                        locateFile: (file) => {
+                            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+                        }
+                    });
+
+                    faceMesh.setOptions({
+                        maxNumFaces: 1,
+                        refineLandmarks: true,
+                        minDetectionConfidence: 0.5,
+                        minTrackingConfidence: 0.5
+                    });
+
+                    faceMesh.onResults(onResults);
+                    agregarLog('🟢 MediaPipe cargado', 'success');
+                }
+
+                isRunning = true;
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'block';
+                document.getElementById('statusDiv').textContent = '✅ GRABANDO';
+                document.getElementById('statusDiv').className = 'status status-ok';
+
+                agregarLog('🟢 ¡CÁMARA INICIADA!', 'success');
+
+                async function processFrame() {
+                    if (!isRunning) return;
+                    try {
+                        await faceMesh.send({ image: videoElement });
+                    } catch (e) {
+                        agregarLog('Error: ' + e.message, 'error');
+                    }
+                    requestAnimationFrame(processFrame);
+                }
+
+                processFrame();
+
+            } catch (error) {
+                agregarLog('❌ ERROR: ' + error.message, 'error');
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('startBtn').textContent = '▶️ INICIAR';
+            }
+        }
+
+        function detenerCamara() {
+            isRunning = false;
+            detenerAsistenteVoz();
+            if (videoElement.srcObject) {
+                videoElement.srcObject.getTracks().forEach(track => track.stop());
+            }
+            document.getElementById('startBtn').style.display = 'block';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('statusDiv').textContent = 'Detenido';
+            document.getElementById('statusDiv').className = 'status';
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            agregarLog('⏹️ Cámara detenida', 'info');
+        }
+
+        function onResults(results) {
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            let ambosOjosCerrados = true; // Default: asumir ojos cerrados si no hay rostro
+
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                // Rostro detectado - resetear contador de falta de rostro
+                tiempoSinRostro = 0;
+                alarmaRostroActivada = false;
+                tiempoUltimaAlarmaVozRostro = 0;
+                const landmarks = results.multiFaceLandmarks[0];
+
+                // Calcular EAR
+                const ear_left = calcularEAR(LEFT_EYE, landmarks);
+                const ear_right = calcularEAR(RIGHT_EYE, landmarks);
+
+                colaLeft.push(ear_left);
+                if (colaLeft.length > 5) colaLeft.shift();
+
+                colaRight.push(ear_right);
+                if (colaRight.length > 5) colaRight.shift();
+
+                const ear_left_prom = colaLeft.reduce((a, b) => a + b, 0) / colaLeft.length;
+                const ear_right_prom = colaRight.reduce((a, b) => a + b, 0) / colaRight.length;
+
+                // Calcular MAR para bostezos
+                const mar = calcularMAR(landmarks);
+                const bostezo_actual = mar > umbral_bostezo;
+
+                // Contar bostezos
+                if (bostezo_actual && !bostezoDetectado) {
+                    bostezoDetectado = true;
+                    
+                    // Solo agregar bostezo si no está en período de espera de alarma
+                    if (!alarmaBostezoActivada) {
+                        contadorBostezos++;
+                        const ahoraBostezo = Date.now();
+                        tiemposBostezos.push(ahoraBostezo);
+                        
+                        // Si es el primer bostezo, activar timer
+                        if (contadorBostezos === 1) {
+                            tiempoInicialCiclo = ahoraBostezo;
+                        }
+                        
+                        agregarLog('😴 ¡¡BOSTEZO DETECTADO!! (Total: ' + contadorBostezos + ')', 'error');
+                        verificarBostezosCronicoS(); // Verificar si hay 3 bostezos
+                    }
+                } else if (!bostezo_actual) {
+                    bostezoDetectado = false;
+                }
+
+                // Detectar ojos cerrados
+                const cerrado_der = ear_left_prom > umbral_der;
+                const cerrado_izq = ear_right_prom < umbral_izq;
+                ambosOjosCerrados = cerrado_der && cerrado_izq;
+
+                // Dibujar rectángulos de ojos con tamaño normalizado
+                const rects = obtenerRectangulosNormalizados(LEFT_EYE, RIGHT_EYE, landmarks);
+                
+                const colorIzq = cerrado_der ? '#ff0000' : '#00ff00';
+                dibujarRectanguloOjo(rects.rect1, colorIzq, cerrado_der ? '❌ DER' : '✅ DER');
+
+                const colorDer = cerrado_izq ? '#ff0000' : '#00ff00';
+                dibujarRectanguloOjo(rects.rect2, colorDer, cerrado_izq ? '❌ IZQ' : '✅ IZQ');
+
+                // Contar tiempo
+                if (ambosOjosCerrados) {
+                    tiempoOjosCerrados += 0.033;
+                    if (tiempoOjosCerrados >= tiempoMaximoOjosCerrados && !alarmaActivada) {
+                        alarmaActivada = true;
+                        tiempoUltimaAlarmaVoz = 0;
+                        agregarLog('🚨 ¡¡ALARMA DE OJOS CERRADOS ACTIVADA!!', 'error');
+                        activarAlarma();
+                        setTimeout(() => {
+                            hablar('Abre los ojos inmediatamente. Es obligatorio mantener los ojos abiertos.');
+                            tiempoUltimaAlarmaVoz = Date.now();
+                        }, 1000);
+                    }
+                    // Mantener alarma sonora y de voz mientras los ojos estén cerrados
+                    else if (alarmaActivada) {
+                        const ahora = Date.now();
+                        // Repetir alarma de voz cada 3 segundos
+                        if (ahora - tiempoUltimaAlarmaVoz >= intervaloAlarmaVoz) {
+                            hablar('Abre los ojos inmediatamente. Es obligatorio mantener los ojos abiertos.');
+                            tiempoUltimaAlarmaVoz = ahora;
+                        }
+                        // Mantener alarma sonora activa continuamente
+                        activarAlarma();
+                    }
+                } else {
+                    tiempoOjosCerrados = 0;
+                    alarmaActivada = false;
+                    tiempoUltimaAlarmaVoz = 0;
+                    detenerAsistenteVoz();
+                }
+
+                // Actualizar UI
+                document.getElementById('derState').textContent = cerrado_der ? '❌' : '✅';
+                document.getElementById('derState').style.color = cerrado_der ? '#ff0000' : '#00ff00';
+                document.getElementById('derEAR').textContent = ear_left_prom.toFixed(3);
+
+                document.getElementById('izqState').textContent = cerrado_izq ? '❌' : '✅';
+                document.getElementById('izqState').style.color = cerrado_izq ? '#ff0000' : '#00ff00';
+                document.getElementById('izqEAR').textContent = ear_right_prom.toFixed(3);
+
+                document.getElementById('eyesClosedTime').textContent = tiempoOjosCerrados.toFixed(1) + 's';
+                document.getElementById('eyesClosedTime').style.color = ambosOjosCerrados ? '#ff0000' : '#ff6600';
+
+                document.getElementById('MAR').textContent = mar.toFixed(3);
+                document.getElementById('bozCount').textContent = contadorBostezos;
+                
+                actualizarTimerBostezos();
+
+                // Dibujar en canvas
+                canvasCtx.fillStyle = '#00ff00';
+                canvasCtx.font = 'bold 24px Arial';
+                canvasCtx.fillText('✅ CARA DETECTADA', 20, 40);
+                let linea2 = `Der: ${cerrado_der ? 'CERRADO' : 'ABIERTO'} | Izq: ${cerrado_izq ? 'CERRADO' : 'ABIERTO'}`;
+                canvasCtx.fillText(linea2, 20, 80);
+                
+                if (bostezo_actual) {
+                    canvasCtx.fillStyle = '#ff0000';
+                    canvasCtx.font = 'bold 32px Arial';
+                    canvasCtx.fillText('😴 BOSTEZO!', 20, 130);
+                }
+                
+                canvasCtx.fillStyle = '#ffff00';
+                canvasCtx.font = 'bold 16px Arial';
+                canvasCtx.fillText(`Bostezos: ${contadorBostezos} | MAR: ${mar.toFixed(3)}`, 20, 160);
+            } else {
+                // NO HAY ROSTRO DETECTADO
+                // Contar tiempo sin rostro
+                tiempoSinRostro += 0.033;
+
+                if (tiempoSinRostro >= tiempoMaximoSinRostro && !alarmaRostroActivada) {
+                    // Activar alarma de falta de rostro
+                    alarmaRostroActivada = true;
+                    tiempoUltimaAlarmaVozRostro = 0;
+                    agregarLog('🚨 ¡¡ALARMA - NO SE DETECTA ROSTRO!!', 'error');
+                    activarAlarma();
+                    setTimeout(() => {
+                        hablar('No se detecta tu rostro. Acércate a la cámara. Tu rostro debe estar visible.');
+                        tiempoUltimaAlarmaVozRostro = Date.now();
+                    }, 1000);
+                }
+                // Mantener alarma activa mientras no haya rostro
+                else if (alarmaRostroActivada) {
+                    const ahora = Date.now();
+                    if (ahora - tiempoUltimaAlarmaVozRostro >= intervaloAlarmaVozRostro) {
+                        hablar('No se detecta tu rostro. Acércate a la cámara. Tu rostro debe estar visible.');
+                        tiempoUltimaAlarmaVozRostro = ahora;
+                    }
+                    activarAlarma();
+                }
+
+                // Mostrar estado sin rostro
+                canvasCtx.fillStyle = '#ff0000';
+                canvasCtx.font = 'bold 24px Arial';
+                canvasCtx.fillText('❌ SIN ROSTRO', 20, 40);
+                canvasCtx.fillStyle = '#ffff00';
+                canvasCtx.font = 'bold 16px Arial';
+                canvasCtx.fillText(`Tiempo sin rostro: ${tiempoSinRostro.toFixed(1)}s`, 20, 80);
+            }
+        }
+
+        // Inicialización
+        agregarLog('✅ Página lista', 'success');
+    </script>
+</body>
+</html>
